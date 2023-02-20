@@ -7,6 +7,11 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt
 
 
+import rclpy
+from rclpy.node import Node
+from telerobot_interfaces.msg import Motor
+
+
 class Direction(Enum):
     Front = 0
     Back = 1
@@ -61,7 +66,7 @@ class SpeedWindow(QtWidgets.QWidget):
         self.speedInfoLayout.addRow("Скорость заднего левого колеса: ", self.qurentSpeedBackLeftQlineEdit)
 
         #информация о максимальной скорости
-        self.maxSpeed = 10;
+        self.maxSpeed = 100;
         self.maxSpeedSpinBox = QtWidgets.QSpinBox()
         self.maxSpeedSpinBox.setRange(0, 20)
         self.maxSpeedSpinBox.setSingleStep(1)
@@ -69,23 +74,15 @@ class SpeedWindow(QtWidgets.QWidget):
         self.maxSpeedSpinBox.valueChanged.connect(self.updatemaxSpeed)
         self.speedInfoLayout.addRow("Максимальная скорость: ", self.maxSpeedSpinBox)
 
-        self.keymapPress={Qt.Key_Left: self.speedLeftIncrease,
-                Qt.Key_Right: self.speedRightIncrease,
-                Qt.Key_Up: self.speedFrontIncrease,
-                Qt.Key_Down: self.speedBackIncrease,
-                Qt.Key_W: self.speedFrontIncrease,
-                Qt.Key_S: self.speedBackIncrease,
-                Qt.Key_A: self.speedLeftIncrease,
-                Qt.Key_D: self.speedRightIncrease}
-
-        self.keymapReales={Qt.Key_Left: self.speedStop,
-                Qt.Key_Right: self.speedStop,
-                Qt.Key_Up: self.speedStop,
-                Qt.Key_Down: self.speedStop,
-                Qt.Key_W: self.speedStop,
-                Qt.Key_S: self.speedStop,
-                Qt.Key_A: self.speedStop,
-                Qt.Key_D: self.speedStop}
+        #ros2
+        rclpy.init(args=None)
+        self.node = Node('WheelCommandsGui')
+        self.pub = self.node.create_publisher(
+            Motor,
+            'wheel_commands',
+            10
+        )
+        
 
         #управление скоростью
         self.initSpeedButtons()
@@ -96,106 +93,73 @@ class SpeedWindow(QtWidgets.QWidget):
         self.timer.timeout.connect(self.update)
         self.timer.start(100)
 
-    def keyPressEvent(self, event):
-        key = event.key()
-        if key in self.keymapPress:
-            self.i+=1
-            self.keymapPress[key]()
-
-    def keyReleaseEvent(self, event):
-        key = event.key()
-        if key in self.keymapReales:
-            self.keymapReales[key]()
             
     def initSpeedButtons(self):
-        self.speedTimer = QtCore.QTimer()
-        self.speedTimer.timeout.connect(self.updateSpeed)
         self.direction = Direction.Stop
         self.speedControlLayout = QtWidgets.QGridLayout()
         #вперед
         self.speedFrontButton = QtWidgets.QPushButton("Вперед")
         self.speedFrontButton.pressed.connect(self.speedFrontIncrease)
-        self.speedFrontButton.released.connect(self.speedStop)
+        self.speedFrontButton.setShortcut(Qt.Key_W)
         self.speedControlLayout.addWidget(self.speedFrontButton, 0, 1)
         #назад
         self.speedBackButton = QtWidgets.QPushButton("Назад")
         self.speedBackButton.pressed.connect(self.speedBackIncrease)
-        self.speedBackButton.released.connect(self.speedStop)
+        self.speedBackButton.setShortcut(Qt.Key_S)
         self.speedControlLayout.addWidget(self.speedBackButton, 1, 1)
         #влево
         self.speedLeftButton = QtWidgets.QPushButton("Влево")
         self.speedLeftButton.pressed.connect(self.speedLeftIncrease)
-        self.speedLeftButton.released.connect(self.speedStop)
+        self.speedLeftButton.setShortcut(Qt.Key_A)
         self.speedControlLayout.addWidget(self.speedLeftButton, 1, 0)
         #вправо
         self.speedRightButton = QtWidgets.QPushButton("Вправо")
         self.speedRightButton.pressed.connect(self.speedRightIncrease)
-        self.speedRightButton.released.connect(self.speedStop)
+        self.speedRightButton.setShortcut(Qt.Key_D)
         self.speedControlLayout.addWidget(self.speedRightButton, 1, 2)
         self.layout.addLayout(self.speedInfoLayout)
 
-    # Функция обновления скорости
-    def speedStop(self):
-        self.speedTimer.stop()
-        while (self.qurentSpeed !=0 or self.qurentSpeedFrontRight !=0 or self.qurentSpeedFrontLeft !=0 or self.qurentSpeedBackRight !=0 or self.qurentSpeedBackLeft !=0):
-            if (self.qurentSpeedFrontRight > 0):
-                self.qurentSpeedFrontRight = self.qurentSpeedFrontRight - 1
-            if (self.qurentSpeedFrontLeft > 0):
-                self.qurentSpeedFrontLeft = self.qurentSpeedFrontLeft - 1
-            if (self.qurentSpeedBackRight > 0):
-                self.qurentSpeedBackRight = self.qurentSpeedBackRight - 1
-            if (self.qurentSpeedBackLeft > 0):
-                self.qurentSpeedBackLeft = self.qurentSpeedBackLeft - 1
-            if (self.qurentSpeedFrontRight<0):
-                self.qurentSpeedFrontRight += 1
-            if (self.qurentSpeedFrontLeft<0):
-                self.qurentSpeedFrontLeft += 1
-            if (self.qurentSpeedBackRight<0):
-                self.qurentSpeedBackRight += 1
-            if (self.qurentSpeedBackLeft<0):
-                self.qurentSpeedBackLeft += 1
-            self.qurentSpeed = (self.qurentSpeedFrontRight + self.qurentSpeedFrontLeft + self.qurentSpeedBackRight + self.qurentSpeedBackLeft) / 4
-
     def speedFrontIncrease(self):
         self.direction = Direction.Front
-        self.speedTimer.start(80)
+        self.updateSpeed()
     def speedBackIncrease(self):
         self.direction = Direction.Back
-        self.speedTimer.start(80)
+        self.updateSpeed()
     def speedLeftIncrease(self):
         self.direction = Direction.Left
-        self.speedTimer.start(80)
+        self.updateSpeed()
     def speedRightIncrease(self):
         self.direction = Direction.Right
-        self.speedTimer.start(80)
+        self.updateSpeed()
     def updateSpeed(self):
         if self.direction == Direction.Front:
             if (self.qurentSpeed < self.maxSpeed):
-                self.qurentSpeedFrontLeft += 1
-                self.qurentSpeedFrontRight += 1 
-                self.qurentSpeedBackLeft += 1
-                self.qurentSpeedBackRight += 1
+                self.qurentSpeedFrontLeft += 10
+                self.qurentSpeedFrontRight += 10
+                self.qurentSpeedBackLeft += 10
+                self.qurentSpeedBackRight += 10
                 self.qurentSpeed = (self.qurentSpeedFrontRight + self.qurentSpeedFrontLeft + self.qurentSpeedBackRight + self.qurentSpeedBackLeft) / 4
+            
         if self.direction == Direction.Back:
             if (self.qurentSpeed < self.maxSpeed):
-                self.qurentSpeedFrontLeft -= 1
-                self.qurentSpeedFrontRight -= 1 
-                self.qurentSpeedBackLeft -= 1
-                self.qurentSpeedBackRight -= 1
+                self.qurentSpeedFrontLeft -= 10
+                self.qurentSpeedFrontRight -= 10 
+                self.qurentSpeedBackLeft -= 10
+                self.qurentSpeedBackRight -= 10
                 self.qurentSpeed = abs(self.qurentSpeedFrontRight + self.qurentSpeedFrontLeft + self.qurentSpeedBackRight + self.qurentSpeedBackLeft) / 4
         if self.direction == Direction.Left:
             if (self.qurentSpeed < self.maxSpeed):
-                self.qurentSpeedFrontLeft -= 1
-                self.qurentSpeedFrontRight += 1 
-                self.qurentSpeedBackLeft += 1
-                self.qurentSpeedBackRight -= 1
+                self.qurentSpeedFrontLeft -= 10
+                self.qurentSpeedFrontRight += 10 
+                self.qurentSpeedBackLeft += 10
+                self.qurentSpeedBackRight -= 10
                 self.qurentSpeed = abs(self.qurentSpeedFrontRight + self.qurentSpeedFrontLeft + self.qurentSpeedBackRight + self.qurentSpeedBackLeft) / 4
         if self.direction == Direction.Right:
             if (self.qurentSpeed < self.maxSpeed):
-                self.qurentSpeedFrontLeft += 1
-                self.qurentSpeedFrontRight -= 1 
-                self.qurentSpeedBackLeft -= 1
-                self.qurentSpeedBackRight += 1
+                self.qurentSpeedFrontLeft += 10
+                self.qurentSpeedFrontRight -= 10 
+                self.qurentSpeedBackLeft -= 10
+                self.qurentSpeedBackRight += 10
                 self.qurentSpeed = abs(self.qurentSpeedFrontRight + self.qurentSpeedFrontLeft + self.qurentSpeedBackRight + self.qurentSpeedBackLeft) / 4
 
 
@@ -208,7 +172,20 @@ class SpeedWindow(QtWidgets.QWidget):
         self.qurentSpeedFrontLeftQlineEdit.setText(str(self.qurentSpeedFrontLeft))
         self.qurentSpeedBackRightQlineEdit.setText(str(self.qurentSpeedBackRight))
         self.qurentSpeedBackLeftQlineEdit.setText(str(self.qurentSpeedBackLeft))
+        msg = Motor()
+        msg.motor_lf = self.qurentSpeedFrontLeft
+        msg.motor_lr = self.qurentSpeedBackLeft
+        msg.motor_rf = self.qurentSpeedFrontRight
+        msg.motor_rr = self.qurentSpeedBackRight
+        self.pub.publish(msg)
 
 
 
+
+if __name__ == '__main__':
+    import sys
+    app = QtWidgets.QApplication(sys.argv)
+    main = SpeedWindow()
+    main.show()
+    sys.exit(app.exec_())
 
