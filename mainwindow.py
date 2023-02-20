@@ -1,6 +1,6 @@
 from PyQt5 import QtCore, QtWidgets, QtGui
 import numpy as np
-
+from ChargeWindow import ChargeWindow
 from ImuWindow import IMUWindow
 from SpeedWindow import SpeedWindow
 
@@ -25,6 +25,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.new_imu.triggered.connect(self.new_imu_window)
         self.file.addAction(self.new_imu)
         self.mdi.setViewMode(QtWidgets.QMdiArea.SubWindowView)
+        #add new to file menu
+        self.new_charge = QtWidgets.QAction("Зарядка", self)
+        self.new_charge.triggered.connect(self.new_charge_window)
+        self.file.addAction(self.new_charge)
+        self.mdi.setViewMode(QtWidgets.QMdiArea.SubWindowView)
 
         self.mdi.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         self.mdi.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
@@ -37,6 +42,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def new_speed_window(self):
         sub = SpeedWindow()
+        self.mdi.addSubWindow(sub)
+        sub.show()
+    
+    def new_charge_window(self):
+        sub = ChargeWindow()
         self.mdi.addSubWindow(sub)
         sub.show()
 

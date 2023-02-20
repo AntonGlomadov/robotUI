@@ -209,11 +209,6 @@ class SpeedWindow(QtWidgets.QWidget):
         self.qurentSpeedBackRightQlineEdit.setText(str(self.qurentSpeedBackRight))
         self.qurentSpeedBackLeftQlineEdit.setText(str(self.qurentSpeedBackLeft))
 
-if __name__ == '__main__':
-    import sys
-    app = QtWidgets.QApplication(sys.argv)
-    main = SpeedWindow()
-    main.show()
-    sys.exit(app.exec_())
+
 
 
